@@ -86,3 +86,16 @@ $$
 $$
 \boldsymbol{Z}_i=F(\boldsymbol{Q}_i,\boldsymbol{K}_i,\boldsymbol{V}_i)\\ \textrm{MultiHead}(\boldsymbol{Q},\boldsymbol{K},\boldsymbol{V})=\textrm{Contact}(\boldsymbol{Z}_0,\boldsymbol{Z}_1,\dots)\boldsymbol{W}^O\\
 $$
+
+### 1.3 残差和 Layer Normalization
+
+可以看一下下面的这张 Encoder 结构图，可以看到在注意力机制以后有一层 Layer Normalization，而这一部分的输入其实将多个输入词向量放到一起构成了矩阵：
+![Encoder 部分结构](https://pic4.zhimg.com/80/v2-122dd3e67c3e44a308653dc57f900c89.png)
+<!-- ![Encoder 部分结构](../Pic/image-58.png) -->
+这里的矩阵其实就是简单地将输入向量拼接，不过要注意这里输入向量在拼接的时候并不是拼接的原始输入向量，而**是经过单词嵌入和位置编码以后的词向量**。然后将这里算出来的 **X** 矩阵和 **Z** 矩阵相加就作为这一部分残差（至于为什么是残差可以回去看一下[深度学习](https://zhuanlan.zhihu.com/p/663943549)的时候提到过的 ResNet 残差神经网络，其实就是 Skip Connection 的引入让网络在拟合恒等函数这件事情上变得更加容易、在梯度下降过程中也更难陷入梯度消失进而加快网络训练速度）。
+
+
+讲完残差机制以后这里来讨论一下为什么这里使用 Layer Normalization 而不是之前用过的 Batch Normalization。实际上，在 NLP 场景中，很少会有网络继续使用 BN，更多的大家都是使用 LN，主要原因简单来说其实就是 BN 在 NLP 中的效果很差而 LN 的效果非常不错。可以回忆一下 BN 的操作其实是在对输入信号的**同一维度**上的特征数据进行处理（比如将一个 Batch 中的体重、身高等单独做 BN），这个操作的优势就是可以解决内部协变量的偏移同时缓解梯度饱和问题加快训练速度，淡然也是存在缺点的。那就是 BN 在 Batch size 比较小的时候效果比较差，同时**在 RNN 中的表现效果比较差**。还是以 NLP 的应用场景为例，输入数据的长度其实是会发生变化的，特别长或者特别短的输入语句出现的频次都会比较低，比如下面这个 Batch 中就只存在一个长句子：
+![在一个 Batch 中只存在一个长句子](https://pic4.zhimg.com/80/v2-5be460227184ea69b9360ac1cd3df800.png)
+<!-- ![在一个 Batch 中只存在一个长句子](../Pic/image-59.png) -->
+那么这种情况下前 5 个单词的均值和方差都可以使用整个 Batch 中的 10 个句子算出来，但是对于第 6~20 个单词，在整个 Batch 中只出现了一次，所以显然此时使用 BN 计算出来的均值和方差并不具有代表性从而就不能发挥 BN 该有的效果（其实就是等价于前面的 Batch size 比较小的情况下 BN 效果不好的问题）。
