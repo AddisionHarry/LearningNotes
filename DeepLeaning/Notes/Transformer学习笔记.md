@@ -86,8 +86,10 @@ $$
 $$
 \boldsymbol{Z}_i=F(\boldsymbol{Q}_i,\boldsymbol{K}_i,\boldsymbol{V}_i)\\ \textrm{MultiHead}(\boldsymbol{Q},\boldsymbol{K},\boldsymbol{V})=\textrm{Contact}(\boldsymbol{Z}_0,\boldsymbol{Z}_1,\dots)\boldsymbol{W}^O\\
 $$
+![多头注意力机制](https://pic4.zhimg.com/80/v2-843b9f0ca2787128fb619b994df5b30e.png)
+<!-- ![多头注意力机制](../Pic/image-61.png) -->
 
-### 1.3 残差和 Layer Normalization
+### 1.3 残差、 Layer Normalization 和前馈神经网络
 
 可以看一下下面的这张 Encoder 结构图，可以看到在注意力机制以后有一层 Layer Normalization，而这一部分的输入其实将多个输入词向量放到一起构成了矩阵：
 ![Encoder 部分结构](https://pic4.zhimg.com/80/v2-122dd3e67c3e44a308653dc57f900c89.png)
@@ -99,3 +101,31 @@ $$
 ![在一个 Batch 中只存在一个长句子](https://pic4.zhimg.com/80/v2-5be460227184ea69b9360ac1cd3df800.png)
 <!-- ![在一个 Batch 中只存在一个长句子](../Pic/image-59.png) -->
 那么这种情况下前 5 个单词的均值和方差都可以使用整个 Batch 中的 10 个句子算出来，但是对于第 6~20 个单词，在整个 Batch 中只出现了一次，所以显然此时使用 BN 计算出来的均值和方差并不具有代表性从而就不能发挥 BN 该有的效果（其实就是等价于前面的 Batch size 比较小的情况下 BN 效果不好的问题）。
+
+
+那么接下来就讨论一下 LN 进行的操作，LN 考虑到在 RNN 中处于同一位置的元素并不携带相同特征因而做对于相同输入位置上的元素进行归一化没有意义，因此 LN 在进行归一化的时候是**针对每个输入序列单独做归一化的**（实际操作上是对每个词向量的各个分量单独归一化），这一部分的考量就是因为一句话的不同单词处于同一语境中，因此就对该语境下的单词进行归一化。
+
+
+而前馈神经网络(Feedforward Neural Network, FNN)其实是一个非常大的概念，简单来说就是从吴恩达机器学习课程到深度学习课程结束介绍的 CNN 以及 GAN 等等都属于前馈神经网络，而 RNN 则属于典型的反馈神经网络。
+
+> 在此种神经网络中，各神经元从输入层开始，接收前一级输入，并输入到下一级，直至输出层。整个网络中无反馈，可用一个有向无环图表示。
+
+与前馈神经网络相对应的概念就是反馈神经网络(FeedBackNN)又称递归网络、回归网络，是一种将输出经过一步时移再接入到输入层的神经网络系统。这类网络中，神经元可以互连，有些神经元的输出会被反馈至同层甚至前层的神经元。常见的比如最近经常讨论的 RNN 以及 Hopfield 神经网络:
+![Hopfield 神经网络结构](https://pic4.zhimg.com/80/v2-98e081734ca2cff44c7ee313444c14e0.png)
+<!-- ![Hopfield 神经网络结构](../Pic/image-60.png) -->
+这一部分感觉[神经网络算法详解 04：反馈神经网络（Hopfield、BAM、BM、RBM）](https://blog.csdn.net/weixin_39653948/article/details/105161038)讲得比较好，有兴趣可以看看。
+
+
+最后再来贴一下 Encoder 的大致流程结构，可以发现这一部分的计算其实已经比较明确了：
+![Encoder 部分结构](https://pic4.zhimg.com/80/v2-122dd3e67c3e44a308653dc57f900c89.png)
+<!-- ![Encoder 部分结构](../Pic/image-58.png) -->
+最后就是还是需要注意一下，实际的 Encoder 部分是由很多个这样的单元叠加而成的，每个 Encoder 都会互不干扰地输出自己的编码结果给对应的 Decoder.
+
+## 2. Decoder 部分
+
+看完了 Encoder 以后来看 Decoder 其实结构是比较清晰的，因为两者确实是比较相似：
+![Decoder 结构](https://pic4.zhimg.com/80/v2-6999c29858d97eb26d08aaec919b8abd.png)
+<!-- ![Decoder 结构](../Pic/image-62.png) -->
+因此这里着重关注的内容就是 Decoder 部分的前两层注意力机制，第一层就是被掩盖的多头注意力机制(Masked Multi-Head Attention)层，而第二部分就是交互层也就是图中画出来的第二层多头注意力层：
+![Decoder 核心结构](https://pic4.zhimg.com/80/v2-9d22b5fd3cf58ab29502c751c698adfb.png)
+<!-- ![Decoder 核心结构](../Pic/image-63.png) -->
