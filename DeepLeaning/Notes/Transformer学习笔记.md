@@ -3,16 +3,20 @@
 这一部分学习主要使用的学习资料有这样几个（排序区分先后，就是学习顺序）：
 1. B 站视频[Transformer从零详细解读(可能是你见过最通俗易懂的讲解)](https://www.bilibili.com/video/BV1Di4y1c7Zm/?spm_id_from=333.337.search-card.all.click&vd_source=1163cf8c6b67cb487398d52f85ef21a4)
 2. Google 关于 Transformer 的原论文（这里就不贴了，大家自己去找吧）
+3.B 站视频[超硬核Transformer细节全梳理！对不起面试官你问的我都见过…](https://www.bilibili.com/video/BV1AU4y1d7nT/?share_source=copy_web&vd_source=b63a44f1679af4831a1d01b79555ac1d)
 
 本人在此前已经学习了吴恩达老师的机器学习和深度学习套件，学习笔记也可以放在这里（引个流hhh）：
 
 1. [机器学习吴恩达老师课堂笔记（一）](https://zhuanlan.zhihu.com/p/662873124)、[机器学习吴恩达老师课堂笔记（二）](https://zhuanlan.zhihu.com/p/662954666)、[机器学习吴恩达老师课堂笔记（三）](https://zhuanlan.zhihu.com/p/663114735)、[机器学习吴恩达老师课堂笔记（四）](https://zhuanlan.zhihu.com/p/663225012)和[机器学习吴恩达老师课堂笔记（五）](https://zhuanlan.zhihu.com/p/663246516)
 2. [深度学习吴恩达老师课堂笔记（一）](https://zhuanlan.zhihu.com/p/663532574)、[深度学习吴恩达老师课堂笔记（二）](https://zhuanlan.zhihu.com/p/663689302)、[深度学习吴恩达老师课堂笔记（三）](https://zhuanlan.zhihu.com/p/663867959)
 
+首先可以来说一下 Transformer 的优势，他最早是在 NLP 领域被时提出的，在上下文语义信息（包含*方向*和*距离*）提取过程中研究者们提出了 Encoder 的概念，就是使用网络对语义信息编码，而在这个语义信息提取过程中人们发现 RNN 只能对句子进行单向编码而 CNN 只能对短句进行编码，而Transformer 通过设计结构实现了**同时对双向语义进行编码还能抽取句子中的长距离特征**，从而在特征抽取方面比 RNN 和 CNN 都要表现得更好。不过 Transformer 在处理句子的序列顺序问题上还是弱于 RNN（尤其是长距离），在计算速度方面又弱于 CNN（强于 RNN 是因为 RNN 无法并行运算）。整体来说，Transformer 在速度和效果上都有一定优势，所以被应用得非常广泛。
+
+
 接下来就进入正题开始讲 Transformer 了。这一部分和深度学习的最后一部分 NLP 可以连接上，比如想要完成机器翻译任务就可以借鉴这种 Encoder-Decoder 的格式来构建网络：
 ![Encoder-Decoder 形式的机器翻译模型](https://pic4.zhimg.com/80/v2-35833201fcb27accb8d8f681cd2e70ba.png)
 <!-- ![Encoder-Decoder 形式的机器翻译模型](../Pic/image-44.png) -->
-比较常见的实现方式就是深度网络模型，这里的 Encoder 和 Decoder **分别**都是结构完全相同但是*参数不相同*的网络层（注意这里是不同的层而不是在讲 RNN 循环神经网络）：
+比较常见的实现方式就是深度网络模型，这里的 Encoder 和 Decoder **分别**（就是 Encoder 之间互相结构相同，Decoder 之间互相结构相同，但是 Encoder 和 Decoder 之间结构不相同）都是结构完全相同但是*参数不相同*的网络层（注意这里是不同的层而不是在讲 RNN 循环神经网络）：
 ![深度 Encoder-Decoder 形式的机器翻译模型](https://pic4.zhimg.com/80/v2-11b920d7156676f91aa7b9568278cc77.png)
 <!-- ![深度 Encoder-Decoder 形式的机器翻译模型](../Pic/image-45.png) -->
 接下来可以看一下 Transformer 原论文中的网络结构：
@@ -129,3 +133,14 @@ $$
 因此这里着重关注的内容就是 Decoder 部分的前两层注意力机制，第一层就是被掩盖的多头注意力机制(Masked Multi-Head Attention)层，而第二部分就是交互层也就是图中画出来的第二层多头注意力层：
 ![Decoder 核心结构](https://pic4.zhimg.com/80/v2-9d22b5fd3cf58ab29502c751c698adfb.png)
 <!-- ![Decoder 核心结构](../Pic/image-63.png) -->
+
+
+首先还是来看这里所谓的 `Masked` 体现在代码上实际就是屏蔽一部分信息，具体一点就是将当前单词和之后的单词进行屏蔽。这是因为训练的时候因为是并行输入，解码端预测的时候是一个个解码，看不到当前单词之后的信息，所以在训练的时候需要把这个信息抹掉，保证训练和测试过程的一致性。
+
+
+接下来就是 Encoder 和 Decoder 交接的关键部分也就是交互层，在这一层 Encoder 与 Decoder 之间会构建类似于全连接的连接关系：
+![Encoder 与 Decoder 之间的连接是全连接的](https://pic4.zhimg.com/80/v2-7b25a75adfed4cceb4043d2fdd7a4aea.png)
+<!-- ![Encoder 与 Decoder 之间的连接是全连接的](../Pic/image-64.png) -->
+这一层的交互实质上也是使用注意力机制搭建起来的，不同的就是，这一层注意力机制的 **Q** 矩阵都是由 Decoder 提供的而 **K** 和 **V** 都是由 Encoder 提供的。接下来就可以看一下完整的 Transformer 的结构了：
+![完整的 Transformer 结构](https://pic4.zhimg.com/80/v2-a3037f19963bfeb938ffd523031f2399.png)
+<!-- ![完整的 Transformer 结构](../Pic/image-65.png) -->
