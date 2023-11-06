@@ -3,20 +3,51 @@
 这一部分学习主要使用的学习资料有这样几个（排序区分先后，就是学习顺序）：
 1. B 站视频[Transformer从零详细解读(可能是你见过最通俗易懂的讲解)](https://www.bilibili.com/video/BV1Di4y1c7Zm/?spm_id_from=333.337.search-card.all.click&vd_source=1163cf8c6b67cb487398d52f85ef21a4)
 2. Google 关于 Transformer 的原论文（这里就不贴了，大家自己去找吧）
-3.B 站视频[超硬核Transformer细节全梳理！对不起面试官你问的我都见过…](https://www.bilibili.com/video/BV1AU4y1d7nT/?share_source=copy_web&vd_source=b63a44f1679af4831a1d01b79555ac1d)
+3. B 站视频[强烈推荐！台大李宏毅自注意力机制和Transformer详解！](https://www.bilibili.com/video/BV1v3411r78R/?spm_id_from=333.337.search-card.all.click&vd_source=1163cf8c6b67cb487398d52f85ef21a4)
+4. B 站视频[超硬核Transformer细节全梳理！对不起面试官你问的我都见过…](https://www.bilibili.com/video/BV1AU4y1d7nT/?share_source=copy_web&vd_source=b63a44f1679af4831a1d01b79555ac1d)
 
 本人在此前已经学习了吴恩达老师的机器学习和深度学习套件，学习笔记也可以放在这里（引个流hhh）：
 
 1. [机器学习吴恩达老师课堂笔记（一）](https://zhuanlan.zhihu.com/p/662873124)、[机器学习吴恩达老师课堂笔记（二）](https://zhuanlan.zhihu.com/p/662954666)、[机器学习吴恩达老师课堂笔记（三）](https://zhuanlan.zhihu.com/p/663114735)、[机器学习吴恩达老师课堂笔记（四）](https://zhuanlan.zhihu.com/p/663225012)和[机器学习吴恩达老师课堂笔记（五）](https://zhuanlan.zhihu.com/p/663246516)
-2. [深度学习吴恩达老师课堂笔记（一）](https://zhuanlan.zhihu.com/p/663532574)、[深度学习吴恩达老师课堂笔记（二）](https://zhuanlan.zhihu.com/p/663689302)、[深度学习吴恩达老师课堂笔记（三）](https://zhuanlan.zhihu.com/p/663867959)
+2. [深度学习吴恩达老师课堂笔记（一）](https://zhuanlan.zhihu.com/p/663532574)、[深度学习吴恩达老师课堂笔记（二）](https://zhuanlan.zhihu.com/p/663689302)、[深度学习吴恩达老师课堂笔记（三）](https://zhuanlan.zhihu.com/p/663867959)、[深度学习吴恩达老师课堂笔记（四）](https://zhuanlan.zhihu.com/p/663943549)、[深度学习吴恩达老师课堂笔记（五）](https://zhuanlan.zhihu.com/p/664178942)、[深度学习吴恩达老师课堂笔记（六）](https://zhuanlan.zhihu.com/p/664337449)、[深度学习吴恩达老师课堂笔记（七）](https://zhuanlan.zhihu.com/p/664603536)和[深度学习吴恩达老师课堂笔记（八）](https://zhuanlan.zhihu.com/p/664758512)
 
 首先可以来说一下 Transformer 的优势，他最早是在 NLP 领域被时提出的，在上下文语义信息（包含*方向*和*距离*）提取过程中研究者们提出了 Encoder 的概念，就是使用网络对语义信息编码，而在这个语义信息提取过程中人们发现 RNN 只能对句子进行单向编码而 CNN 只能对短句进行编码，而Transformer 通过设计结构实现了**同时对双向语义进行编码还能抽取句子中的长距离特征**，从而在特征抽取方面比 RNN 和 CNN 都要表现得更好。不过 Transformer 在处理句子的序列顺序问题上还是弱于 RNN（尤其是长距离），在计算速度方面又弱于 CNN（强于 RNN 是因为 RNN 无法并行运算）。整体来说，Transformer 在速度和效果上都有一定优势，所以被应用得非常广泛。
 
+## 1. Self-attention 机制介绍
+
+首先来说明一下自注意力机制，常规来说想要实现变长度序列的全局信息学习，如果套用全连接层的思路就需要非常大的输入滑动窗口，这对于网络的训练和实际计算都是非常不利的，但是如果使用 RNN 的话，又很难抓取长程的语义信息，因此自注意力机制的思路首先就是寻找输入序列中存在相关性的几个向量，于是需要定义相关度 $\alpha$，这里的相关度的计算方式其实有很多种，下面介绍几种比较典型的：
+
+### 1.1 相关度 $\alpha$ 的定义方式
+***
+#### 1.1.1 Dot-produce 方式
+
+如果待计算相关的两个向量为 **X**~1~ 和 **X**~2~，那么我们分别使用线性变换矩阵 **W**~q~ 和 **W**~k~ 对其进行变换就可以得到：
+$$
+\boldsymbol{q}=\boldsymbol{W}_q\boldsymbol{X}_1\\ \boldsymbol{k}=\boldsymbol{W}_k\boldsymbol{X}_2\\
+$$
+于是就可以将相似度函数定义为：
+$$
+\alpha=\boldsymbol{q}^T\boldsymbol{k}
+$$
+
+#### 1.1.2 Additive 方式
+
+还是采取上面的符号体系，可以将相似度函数定义为：
+$$
+\alpha=\boldsymbol{W}_O\tanh(\boldsymbol{W}_q\boldsymbol{X}_1+\boldsymbol{W}_k\boldsymbol{X}_2)
+$$
+***
+当然还有一些其他的方法，不过整体来说还是前面的这种点乘方法比较常用，后面的讨论也就采用这种定义方法了。
+
+## Transformer 介绍
 
 接下来就进入正题开始讲 Transformer 了。这一部分和深度学习的最后一部分 NLP 可以连接上，比如想要完成机器翻译任务就可以借鉴这种 Encoder-Decoder 的格式来构建网络：
 ![Encoder-Decoder 形式的机器翻译模型](https://pic4.zhimg.com/80/v2-35833201fcb27accb8d8f681cd2e70ba.png)
 <!-- ![Encoder-Decoder 形式的机器翻译模型](../Pic/image-44.png) -->
-比较常见的实现方式就是深度网络模型，这里的 Encoder 和 Decoder **分别**（就是 Encoder 之间互相结构相同，Decoder 之间互相结构相同，但是 Encoder 和 Decoder 之间结构不相同）都是结构完全相同但是*参数不相同*的网络层（注意这里是不同的层而不是在讲 RNN 循环神经网络）：
+和传统的基于注意力的 Seq2Seq 模型不一样的就是，Transformer 是纯基于自注意力的结构，它里面是没有 RNN 的：
+![传统的基于注意力的 Seq2Seq 模型](https://pic4.zhimg.com/80/v2-39e05ef0135de02e85cd1a9dfc4d318a.png)
+<!-- ![传统的基于注意力的 Seq2Seq 模型](../Pic/image-66.png) -->
+这里的 Encoder 和 Decoder **分别**（就是 Encoder 之间互相结构相同，Decoder 之间互相结构相同，但是 Encoder 和 Decoder 之间结构不相同）都是结构完全相同但是*参数不相同*的网络层（注意这里是不同的层而不是在讲 RNN 循环神经网络）：
 ![深度 Encoder-Decoder 形式的机器翻译模型](https://pic4.zhimg.com/80/v2-11b920d7156676f91aa7b9568278cc77.png)
 <!-- ![深度 Encoder-Decoder 形式的机器翻译模型](../Pic/image-45.png) -->
 接下来可以看一下 Transformer 原论文中的网络结构：
@@ -27,12 +58,12 @@
 
 下面分别来看这个网络的 Encoder 和 Decoder 部分展开来讲：
 
-## 1. Encoder 部分
+### .1. Encoder 部分
 首先单独来看 Encoder 部分，它主要分为`输入部分`、`注意力机制`和`前馈神经网络`三个部分。：
 ![Encoder 部分结构](https://pic4.zhimg.com/80/v2-2ac0391bae1cff4d5a5d7854a847330c.png)
 <!-- ![Encoder 部分结构](../Pic/image-47.png) -->
 
-### 1.1 输入部分
+#### .1.1 输入部分
 
 输入部分主要又分为两个小部分也就是单词嵌入和位置嵌入。单词嵌入这就不再多说了，可以按照深度学习的时候的 Word2Vec 部分。接下来讨论一下位置嵌入的必要性：前面在讲 RNN 的时候已经说过，对于所有时间步上的输入而言，它的网络参数(下图中的 U,V,W)是共享的：
 ![RNN 在不同时间步上共享网络](https://pic4.zhimg.com/80/v2-fff60d9cd815530a842d6ae3735f9ea0.png)
@@ -59,7 +90,7 @@ PE(pos+k,2i+1)&=\cos(\displaystyle\frac{pos+k}{10000^{2i/d_{model}}})=\cos(\disp
 $$ -->
 可以看出，对于 pos+k 位置上的位置嵌入向量的某一维 2i 和 2i+1 而言，他都可以表示为 pos 位置和 k 位置的位置向量的 2i 和 2i+1 维的线性组合。这样的线性组合意味着位置嵌入向量中蕴含了输入数据的相对位置信息，这种信息的加入是有利于网络知晓输入向量的先后关系的。
 
-### 1.2 多头注意力机制(Multi-head Attention)
+#### .1.2 多头注意力机制(Multi-head Attention)
 
 接下来讨论注意力机制。注意力机制最核心的问题就是借鉴了人类在认识事物的时候存在侧重点的思路，因此在处理问题的时候网络不应该像之前的网络一样对于每一个输入信息都基于相同的“注意力”，而是应该着重关注输入信息的某几个部分而更少关注输入信息的其他部分，就像下面这张图中我们在得到提问“婴儿在看什么”之后在看的时候就会着重关注画红色的部分：
 ![注意力机制的作用](https://pic4.zhimg.com/80/v2-56d7190f43a754b53b257478ac506d42.png)
@@ -93,7 +124,7 @@ $$
 ![多头注意力机制](https://pic4.zhimg.com/80/v2-843b9f0ca2787128fb619b994df5b30e.png)
 <!-- ![多头注意力机制](../Pic/image-61.png) -->
 
-### 1.3 残差、 Layer Normalization 和前馈神经网络
+#### .1.3 残差、 Layer Normalization 和前馈神经网络
 
 可以看一下下面的这张 Encoder 结构图，可以看到在注意力机制以后有一层 Layer Normalization，而这一部分的输入其实将多个输入词向量放到一起构成了矩阵：
 ![Encoder 部分结构](https://pic4.zhimg.com/80/v2-122dd3e67c3e44a308653dc57f900c89.png)
@@ -117,7 +148,7 @@ $$
 与前馈神经网络相对应的概念就是反馈神经网络(FeedBackNN)又称递归网络、回归网络，是一种将输出经过一步时移再接入到输入层的神经网络系统。这类网络中，神经元可以互连，有些神经元的输出会被反馈至同层甚至前层的神经元。常见的比如最近经常讨论的 RNN 以及 Hopfield 神经网络:
 ![Hopfield 神经网络结构](https://pic4.zhimg.com/80/v2-98e081734ca2cff44c7ee313444c14e0.png)
 <!-- ![Hopfield 神经网络结构](../Pic/image-60.png) -->
-这一部分感觉[神经网络算法详解 04：反馈神经网络（Hopfield、BAM、BM、RBM）](https://blog.csdn.net/weixin_39653948/article/details/105161038)讲得比较好，有兴趣可以看看。
+这一部分感觉[神经网络算法详解 04：反馈神经网络（Hopfield、BAM、BM、RBM）](https://blog.csdn.net/weixin_39653948/article/details/105161038)讲得比较好，有兴趣可以看看。而重新回到 Transformer 里面这里其实构建的还是一个类似于全连接层的东西，而这个全连接层是用来维度变换的（考虑到输入序列长度会发生变化所以需要通过全连接将长度固定）。
 
 
 最后再来贴一下 Encoder 的大致流程结构，可以发现这一部分的计算其实已经比较明确了：
@@ -125,7 +156,7 @@ $$
 <!-- ![Encoder 部分结构](../Pic/image-58.png) -->
 最后就是还是需要注意一下，实际的 Encoder 部分是由很多个这样的单元叠加而成的，每个 Encoder 都会互不干扰地输出自己的编码结果给对应的 Decoder.
 
-## 2. Decoder 部分
+### .2. Decoder 部分
 
 看完了 Encoder 以后来看 Decoder 其实结构是比较清晰的，因为两者确实是比较相似：
 ![Decoder 结构](https://pic4.zhimg.com/80/v2-6999c29858d97eb26d08aaec919b8abd.png)
@@ -141,6 +172,6 @@ $$
 接下来就是 Encoder 和 Decoder 交接的关键部分也就是交互层，在这一层 Encoder 与 Decoder 之间会构建类似于全连接的连接关系：
 ![Encoder 与 Decoder 之间的连接是全连接的](https://pic4.zhimg.com/80/v2-7b25a75adfed4cceb4043d2fdd7a4aea.png)
 <!-- ![Encoder 与 Decoder 之间的连接是全连接的](../Pic/image-64.png) -->
-这一层的交互实质上也是使用注意力机制搭建起来的，不同的就是，这一层注意力机制的 **Q** 矩阵都是由 Decoder 提供的而 **K** 和 **V** 都是由 Encoder 提供的。接下来就可以看一下完整的 Transformer 的结构了：
+这一层的交互实质上也是使用注意力机制搭建起来的，不同的就是，这一层注意力机制的 **Q** 矩阵都是由 Decoder 提供的而 **K** 和 **V** 都是由 Encoder 提供的（其实就是 Encoder 的输出），这也就意味着 Encoder 和 Decoder 中块的个数和输出的维度都是一样的。接下来就可以看一下完整的 Transformer 的结构了：
 ![完整的 Transformer 结构](https://pic4.zhimg.com/80/v2-a3037f19963bfeb938ffd523031f2399.png)
 <!-- ![完整的 Transformer 结构](../Pic/image-65.png) -->
